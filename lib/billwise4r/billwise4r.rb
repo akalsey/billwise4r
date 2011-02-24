@@ -32,16 +32,20 @@ class Billwise
   #
   # @return [Hash] the Billwise response
   def method_missing(method, params)
-    response = @soap_driver.send(method) do |soap, wsse|
-      soap.endpoint = @soap_endpoint
-      soap.namespaces["xmlns:wsdl"] = @soap_namespace
+    begin
+      response = @soap_driver.send(method) do |soap, wsse|
+        soap.endpoint = @soap_endpoint
+        soap.namespaces["xmlns:wsdl"] = @soap_namespace
       
-      fields = { :companyCd => @companyCd }.merge!(params)
-      fields.merge!({ :order! => @tag_order[method] }) if @tag_order[method]
+        fields = { :companyCd => @companyCd }.merge!(params)
+        fields.merge!({ :order! => @tag_order[method] }) if @tag_order[method]
       
-      soap.body = fields
+        soap.body = fields
+      end
+      response.to_hash["#{method}_response".to_sym][:return]
+    rescue Savon::SOAPFault => fault
+      response = {'error' => 'soapfault', 'message' => fault}
     end
-    response.to_hash["#{method}_response".to_sym][:return]
   end
     
   private
